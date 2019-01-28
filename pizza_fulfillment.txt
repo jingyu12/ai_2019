@@ -1,0 +1,69 @@
+// See https://github.com/dialogflow/dialogflow-fulfillment-nodejs
+// for Dialogflow fulfillment library docs, samples, and to report issues
+'use strict';
+ 
+const functions = require('firebase-functions');
+const {WebhookClient} = require('dialogflow-fulfillment');
+const {Card, Suggestion} = require('dialogflow-fulfillment');
+
+process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
+ 
+exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
+  const agent = new WebhookClient({ request, response });
+ 
+  const parameter = request.body.queryResult.parameters;
+  
+  console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
+  console.log('Dialogflow Request body: ' + JSON.stringify(request.body));
+
+  
+  function welcome(agent) {
+    agent.add(`Welcome to my agent!`);
+  }
+ 
+  function fallback(agent) {
+    agent.add(`I didn't understand`);
+    agent.add(`I'm sorry, can you try again?`);
+}
+
+  function pizza_info(agent){
+    var answer;
+    if (parameter.pizza_type == "불고기피자"){
+        answer = '한국의 맛 불고기를 치즈와 함께';
+    }
+    else if(parameter.pizza_type == "페퍼로니피자"){
+        answer= '페퍼로니와 치즈의 조화';
+    }
+    else if(parameter.pizza_type=="포테이토피자"){
+        answer = '저칼로리 감자의 담백한 맛';
+    }
+    agent.add(answer);
+    }
+
+   function pizza_slot(agent) {
+     const [피자타입, 피자개수, 피자사이즈] =
+                [agent.parameters['pizza_type'], agent.parameters['number'], agent.parameters['pizza_size']];
+     let missingSlots = [];
+     if (!피자타입) { missingSlots.push('피자타입'); }
+     if (!피자개수) { missingSlots.push('피자개수'); }
+     if (!피자사이즈) { missingSlots.push('피자사이즈'); }
+
+     if (missingSlots.length === 1){
+        agent.add(`${missingSlots[0]} 정보가 필요해요`);
+      }
+      else if (missingSlots.length === 2){
+         agent.add(`${missingSlots[0]},  ${missingSlots[1]} 정보가 없는 것 같아요!`);
+     }
+     else if (missingSlots.length === 3){
+         agent.add(` ${missingSlots[0]}, ${missingSlots[1]}, ${missingSlots[2]} 정보를 알려주세요!`);
+     } else {
+       agent.add(`${피자타입}, ${피자개수}판  ${피자사이즈} 사이즈를 선택하셨군요! 이제 주소를 알려주세요!`);
+     }
+   }
+  // Run the proper function handler based on the matched Dialogflow intent name
+  let intentMap = new Map();
+  intentMap.set('pizza_info',pizza_info);
+  intentMap.set('pizza_order', pizza_slot);
+
+  agent.handleRequest(intentMap);
+  });
